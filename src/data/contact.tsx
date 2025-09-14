@@ -34,12 +34,6 @@ const CONTACT: Contact[] = [
     icon: <SiSpotify />,
     color: SiSpotifyHex,
   },
-    {
-        title: "Telegram",
-        url: USER.social.spotify,
-        icon: <SiSpotify />,
-        color: SiSpotifyHex,
-    },
 ];
 
 
