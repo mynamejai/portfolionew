@@ -2,7 +2,6 @@ import Hobby from "@/types/hobby";
 import Quote from "@/types/quote";
 import {
     Dumbbell, Edit,
-    Mountain,
     Music, Pen,
     PlaneTakeoff,
     Tv,
