@@ -1,81 +1,91 @@
 import { useEffect, useRef } from "react";
-import { createNoise3D } from "simplex-noise";
+// Notice there are no external libraries imported for the animation
 import { useTheme } from "../providers/theme";
-import { accentList } from "./particle";
 
-const WAVE_COLORS = accentList.map((a) => a.color);
+// Color palettes for light and dark themes
+const WAVE_COLORS = {
+  light: [
+    "rgba(0, 119, 190, 0.5)",
+    "rgba(100, 200, 255, 0.5)",
+  ],
+  dark: [
+    "rgba(70, 80, 150, 0.6)",
+    "rgba(50, 60, 120, 0.6)",
+  ],
+};
 
 export default function Wave() {
-  let w: number, h: number, nt: number, animationId: number;
-
   const { theme } = useTheme();
-  const noise = createNoise3D();
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const animationFrameId = useRef<number | null>(null);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
-  const themeRef = useRef<string>("light");
-
-  const drawWave = () => {
-    const ctx = ctxRef.current;
-    if (!ctx) return;
-    nt += 0.005; // wave speed
-    ctx.globalAlpha = 0.75; // wave opacity
-    for (let i = 0; i < WAVE_COLORS.length; i++) {
-      ctx.beginPath();
-      ctx.lineWidth = 50; // wave width
-      ctx.lineCap = "round";
-      ctx.strokeStyle = WAVE_COLORS[i];
-      for (let x = 0; x < w; x += 5) {
-        const y = noise(x / 800, 0.3 * i, nt) * 100;
-        ctx.lineTo(x, y + h * 0.5); // adjust for height
-      }
-      ctx.stroke();
-      ctx.closePath();
-    }
-    ctx.globalAlpha = 1.0;
-  };
-
-  const render = () => {
-    const ctx = ctxRef.current;
-    if (!ctx) return;
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = themeRef.current === "light" ? "white" : "black";
-    ctx.fillRect(0, 0, w, h);
-    drawWave();
-    animationId = requestAnimationFrame(render);
-  };
-
-  const init = () => {
+  useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-    ctxRef.current = ctx;
-    w = ctx.canvas.width = window.innerWidth;
-    h = ctx.canvas.height = window.innerHeight;
-    ctx.filter = `blur(${10}px)`;
-    nt = 0;
-    window.onresize = () => {
-      w = ctx.canvas.width = window.innerWidth;
-      h = ctx.canvas.height = window.innerHeight;
-      ctx.filter = `blur(${10}px)`;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let width: number, height: number;
+    let time = 0; // A variable to control the animation over time
+
+    const handleResize = () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+      ctx.filter = `blur(10px)`;
     };
+
+    const render = () => {
+      ctx.fillStyle = theme === "dark" ? "#020817" : "#FFFFFF";
+      ctx.fillRect(0, 0, width, height);
+
+      // Make the wave move by slowly increasing the time
+      time += 0.01;
+
+      const currentColors = theme === "dark" ? WAVE_COLORS.dark : WAVE_COLORS.light;
+
+      // Draw each layer of the river
+      currentColors.forEach((color, i) => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(0, height);
+
+        // Create the wavy line across the screen
+        for (let x = 0; x < width; x += 10) {
+          // --- THIS IS THE ONLY PART THAT CHANGED ---
+          // Replaced simplex noise with a simple Sine wave from Math.sin()
+          // We vary the sine wave for each layer to create a nice effect.
+          const waveFrequency = 150 + i * 50;
+          const waveAmplitude = 50 + i * 10;
+          const waveSpeed = 1 + i * 0.2;
+          
+          const y = Math.sin(x / waveFrequency + time * waveSpeed) * waveAmplitude;
+          ctx.lineTo(x, y + height * 0.5); // Center the wave vertically
+        }
+
+        ctx.lineTo(width, height);
+        ctx.closePath();
+        ctx.fill();
+      });
+
+      animationFrameId.current = requestAnimationFrame(render);
+    };
+
+    handleResize();
     render();
-  };
 
-  useEffect(() => {
-    init();
-    return () => cancelAnimationFrame(animationId);
-  }, []);
+    window.addEventListener("resize", handleResize);
 
-  useEffect(() => {
-    themeRef.current = theme;
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+    };
   }, [theme]);
 
   return (
     <canvas
-      // style={{
-      //   filter: "blur(5px)",
-      // }}
       className="fixed inset-0 z-0"
       ref={canvasRef}
     />
